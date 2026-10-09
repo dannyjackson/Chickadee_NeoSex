@@ -5,8 +5,8 @@
 #   ratio = mean depth (Z-specific, > PAR_END + BUFFER) / mean depth (PAR)
 #   males (ZZ) ~ 1.0, females (ZW) ~ 0.5
 # Samples are assigned M/F by 2-cluster k-means on the ratio.
-# Also writes windowed depth across the whole Z (each sample's window depth /
-# its own PAR mean) and plots it by inferred sex.
+# Also writes raw mean depth in windows across the whole Z and plots it by
+# inferred sex.
 #
 # Run:
 #   nohup bash infer_sex_Zdepth.sh > logs/infer_sex_Zdepth.log 2>&1 &
@@ -14,9 +14,8 @@
 # -----------------------------------------------------------------------------
 set -euo pipefail
 
-PROJDIR=/nas/bcch_for_danny/
 VCF=${PROJDIR}/data/vcfs/Z.all_ind.diploid.vcf.gz
-OUTDIR=${PROJDIR}/analyses/sex_inference
+OUTDIR=${PROJDIR}/results/sex_inference
 PAR_END=${PAR_END:-50000000}   # end of PAR control
 BUFFER=${BUFFER:-1000000}      # sites near the PAR boundary are skipped (sex calls only)
 MINQ=${MINQ:-30}
@@ -88,35 +87,33 @@ abline(h = c(0.5, 1), lty = 2, col = "grey50")
 legend("topleft", c("F (ZW)", "M (ZZ)"), pt.bg = cols, pch = 21, bty = "n")
 dev.off()
 
-## --- Windowed depth along the Z, normalized by each sample's PAR mean ---
+## --- Windowed raw mean depth along the Z, by inferred sex ---
 w <- read.delim(file.path(out, "Z_window_depth.tsv"))
-w <- merge(w, d[, c("sample", "dp_PAR", "sex")], by = "sample")
+w <- merge(w, d[, c("sample", "sex")], by = "sample")
 w <- w[!is.na(w$sex), ]
-w$norm_dp <- w$mean_dp / w$dp_PAR
-w$mid_mb  <- (w$win_start + w$win_end) / 2 / 1e6
+w$mid_mb <- (w$win_start + w$win_end) / 2 / 1e6
 w <- w[order(w$sample, w$mid_mb), ]
 
-# Per-sex median per window
-med <- aggregate(norm_dp ~ sex + mid_mb, data = w, FUN = median)
-write.table(w, file.path(out, "Z_window_depth_norm.tsv"), sep = "\t",
+# Per-sex median raw depth per window
+med <- aggregate(mean_dp ~ sex + mid_mb, data = w, FUN = median)
+write.table(w, file.path(out, "Z_window_depth_sex.tsv"), sep = "\t",
             quote = FALSE, row.names = FALSE)
 
-ymax <- min(2, max(1.5, quantile(w$norm_dp, 0.995, na.rm = TRUE)))
+ymax <- quantile(w$mean_dp, 0.995, na.rm = TRUE) * 1.05   # trim extreme windows
 pdf(file.path(out, "Z_window_depth.pdf"), width = 11, height = 4.5)
 plot(NA, xlim = range(w$mid_mb), ylim = c(0, ymax),
-     xlab = "Position on Z (Mb)", ylab = "Window depth / sample PAR mean")
-rect(0, -1, par_end / 1e6, ymax + 1, col = "grey95", border = NA)
+     xlab = "Position on Z (Mb)", ylab = "Mean depth (DP) per window")
+rect(0, -1, par_end / 1e6, ymax * 2, col = "grey95", border = NA)
 for (s in unique(w$sample)) {
   ws <- w[w$sample == s, ]
-  lines(ws$mid_mb, ws$norm_dp, col = adjustcolor(cols[ws$sex[1]], 0.25), lwd = 0.6)
+  lines(ws$mid_mb, ws$mean_dp, col = adjustcolor(cols[ws$sex[1]], 0.25), lwd = 0.6)
 }
 for (sx in c("F", "M")) {
   m <- med[med$sex == sx, ]
-  lines(m$mid_mb, m$norm_dp, col = cols[sx], lwd = 2.5)
+  lines(m$mid_mb, m$mean_dp, col = cols[sx], lwd = 2.5)
 }
-abline(h = c(0.5, 1), lty = 2, col = "grey40")
 abline(v = par_end / 1e6, lty = 3)
-legend("bottomleft", c("F (ZW) median", "M (ZZ) median", "PAR control"),
+legend("topright", c("F (ZW) median", "M (ZZ) median", "PAR control"),
        col = c(cols, "grey85"), lwd = c(2.5, 2.5, 8), bty = "n", cex = 0.8)
 box()
 dev.off()

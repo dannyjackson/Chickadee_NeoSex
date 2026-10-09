@@ -1,9 +1,11 @@
 # Generate the following VCFs:
 1. All samples, aligned to raw ref genome, only call variants on Z.
     ***Use: compare depth of samples to confirm inferred sex***
-2. All samples, aligned to ref genome with W removed, only call variants on Z using diploid calls
+2. All samples, aligned to ref genome with W removed, only call variants on Z using diploid calls.
     ***Use: Phase variants on neo region of sex chromosome***
-3. All females, aligned to raw ref genome, only call variants on W using haploid calls
+3. All samples, aligned to raw ref genome, only call variants on chr 2 (similar size to Z).
+    ***Use: Standardizing depth by autosomal depth***
+3. All females, aligned to raw ref genome, only call variants on W using haploid calls.
     ***Use: Potentially extract W-linked variants in recent recombination suppressed region***
 
 
@@ -43,7 +45,7 @@ SCRIPTDIR=${PROJDIR}/scripts/Chickadee_NeoSex
 cd ${PROJDIR}
 REF=${PROJDIR}/data_from_will/ncbi_dataset/data/GCA_030490865.1/GCA_030490865.1_bPoeAtr1.hap1_genomic.fna
 
-bcftools mpileup -f ${REF} -r CM059970.1 -a AD,DP \
+bcftools mpileup -f ${REF} -r CM059970.1, -a AD,DP \
     -b ${PROJDIR}/reference_lists/sorted_bams.raw_genome.txt -Ou \
 | bcftools call -mv --ploidy 2 -Oz -o ${PROJDIR}/data/vcfs/Z.all_ind.diploid.vcf.gz 
 
@@ -96,3 +98,28 @@ bcftools index ${PROJDIR}/data/vcfs/Z_noW.all_ind.diploid.vcf.gz
 EOF
 
 nohup bash scripts/call.Z_noW.sh > scripts/call.Z_noW.log 2>&1 &
+```
+## VCF 3: All samples, aligned to raw ref genome, only call variants on chr 2 (similar size to Z).
+```
+
+# call variants on Chr2 to confirm sex assignment
+## Z chromosome
+cat > scripts/call.Chr2.sh << 'EOF'
+#!/bin/bash
+micromamba activate bcf
+
+PROJDIR=/nas/bcch_for_danny/
+SCRIPTDIR=${PROJDIR}/scripts/Chickadee_NeoSex
+cd ${PROJDIR}
+REF=${PROJDIR}/data_from_will/ncbi_dataset/data/GCA_030490865.1/GCA_030490865.1_bPoeAtr1.hap1_genomic.fna
+
+bcftools mpileup -f ${REF} -r CM059931.1, -a AD,DP \
+    -b ${PROJDIR}/reference_lists/sorted_bams.raw_genome.txt -Ou \
+| bcftools call -mv --ploidy 2 -Oz -o ${PROJDIR}/data/vcfs/Chr2.all_ind.diploid.vcf.gz 
+
+bcftools index ${PROJDIR}/data/vcfs/Chr2.all_ind.diploid.vcf.gz 
+
+EOF
+
+nohup bash scripts/call.Chr2.sh > scripts/call.Chr2.log 2>&1 &
+```
