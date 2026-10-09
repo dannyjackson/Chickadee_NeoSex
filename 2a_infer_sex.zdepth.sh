@@ -15,7 +15,7 @@
 set -euo pipefail
 
 PROJDIR=/nas/bcch_for_danny/
-VCF=${PROJDIR}/data/vcfs/Z.all_ind.diploid.vcf.gz
+VCF=${PROJDIR}/data/vcfs/Z_noW.all_ind.diploid.vcf.gz
 OUTDIR=${PROJDIR}/results/sex_inference
 PAR_END=${PAR_END:-50000000}   # end of PAR control
 BUFFER=${BUFFER:-1000000}      # sites near the PAR boundary are skipped (sex calls only)

@@ -106,6 +106,8 @@ nohup bash scripts/call.Z_noW.sh > scripts/call.Z_noW.log 2>&1 &
 ## Z chromosome
 cat > scripts/call.Chr2.sh << 'EOF'
 #!/bin/bash
+eval "$(micromamba shell hook --shell bash)"
+
 micromamba activate bcf
 
 PROJDIR=/nas/bcch_for_danny/

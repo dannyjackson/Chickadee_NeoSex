@@ -1,5 +1,6 @@
 # Genespace analysis
-
+Setup environment
+```
 PROJDIR=/nas/bcch_for_danny/analyses/genespace/
 SOURCEDIR=/nas/four_bird_synteny/genespace
 
@@ -19,10 +20,18 @@ ls input_files/*
 micromamba activate genespace
 
 ```
+Run orthofinder independently
+```
+micromamba run -n of255 python --version    # should say 3.10.x
+micromamba run -n of255 orthofinder -f gs_run/tmp -t 12 -a 1 -X -o gs_run/orthofinder
+```
+Run genespace
+```
 cat > run_genespace.R << 'EOF'
 library(GENESPACE)
 gpar <- init_genespace(wd = "gs_run",
-                       path2mcscanx = "~/MCScanX",
+                       path2orthofinder = "/home/daja5529/micromamba/envs/of255/bin/orthofinder",
+                       path2mcscanx = "/home/daja5529/MCScanX",
                        genomeIDs = c("gaga", "bcch", "moch", "zefi"),
                        nCores=12)
 gpar <- run_genespace(gpar)
