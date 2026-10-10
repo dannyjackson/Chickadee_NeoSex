@@ -23,6 +23,8 @@ micromamba install -n genespace -c conda-forge -c bioconda \
 
 micromamba install -n genespace -c conda-forge -c bioconda orthofinder=2.5.5
 
+micromamba install -n genespace -c conda-forge -c bioconda mcscanx
+
 cd ~
 git clone https://github.com/wyp1125/MCScanX.git
 cd MCScanX
@@ -33,4 +35,9 @@ ls -l MCScanX_h
 R
 remotes::install_github("jtlovell/GENESPACE", dependencies = FALSE, upgrade = "never")
 library(GENESPACE)
+
+
+
+micromamba create -n of255 -c conda-forge -c bioconda orthofinder=2.5.5 python=3.10 "numpy<2"
+micromamba run -n of255 which orthofinder    # copy this path
 ```

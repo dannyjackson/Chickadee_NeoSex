@@ -7,6 +7,8 @@
     ***Use: Standardizing depth by autosomal depth***
 3. All females, aligned to raw ref genome, only call variants on W using haploid calls.
     ***Use: Potentially extract W-linked variants in recent recombination suppressed region***
+4. All individuals, aligned to raw ref genome, only call variants on autosomes.
+    ***Use: Understand autosomal pop gen as background***
 
 
 ## Setup working environment
@@ -124,4 +126,33 @@ bcftools index ${PROJDIR}/data/vcfs/Chr2.all_ind.diploid.vcf.gz
 EOF
 
 nohup bash scripts/call.Chr2.sh > scripts/call.Chr2.log 2>&1 &
+```
+## VCF 4: All samples, aligned to raw ref genome, call autosomes.
+```
+# make list of autosomes
+SCRIPTDIR=${PROJDIR}/scripts/Chickadee_NeoSex
+cd ${PROJDIR}
+REF=${PROJDIR}/data_from_will/ncbi_dataset/data/GCA_030490865.1/GCA_030490865.1_bPoeAtr1.hap1_genomic.fna
+
+awk '{print $1}' ${REF}.fai | grep 'CM' | grep -v '	CM059969.1' | grep -v 'CM059970.1' > ${PROJDIR}/reference_lists/bcch_ref.autosomes.txt
+
+# call variants on autosomes to confirm sex assignment
+cat > scripts/call.autosomes.sh << 'EOF'
+#!/bin/bash
+micromamba activate bcf
+
+PROJDIR=/nas/bcch_for_danny/
+SCRIPTDIR=${PROJDIR}/scripts/Chickadee_NeoSex
+cd ${PROJDIR}
+REF=${PROJDIR}/data_from_will/ncbi_dataset/data/GCA_030490865.1/GCA_030490865.1_bPoeAtr1.hap1_genomic.fna
+
+bcftools mpileup -f ${REF} -R ${PROJDIR}/reference_lists/bcch_ref.autosomes.txt -a AD,DP \
+    -b ${PROJDIR}/reference_lists/sorted_bams.raw_genome.txt -Ou \
+| bcftools call -mv --ploidy 2 -Oz -o ${PROJDIR}/data/vcfs/autosomes.all_ind.diploid.vcf.gz 
+
+bcftools index ${PROJDIR}/data/vcfs/autosomes.all_ind.diploid.vcf.gz 
+
+EOF
+
+nohup bash scripts/call.autosomes.sh > scripts/call.autosomes.log 2>&1 &
 ```

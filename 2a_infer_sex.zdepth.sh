@@ -10,7 +10,7 @@
 #
 # Run:
 #   nohup bash infer_sex_Zdepth.sh > logs/infer_sex_Zdepth.log 2>&1 &
-# Optional overrides: PAR_END=50000000 BUFFER=1000000 MINQ=30 WIN=500000
+# Optional overrides: PAR_END=50000000 BUFFER=20000000 MINQ=30 WIN=500000
 # -----------------------------------------------------------------------------
 set -euo pipefail
 
@@ -18,7 +18,7 @@ PROJDIR=/nas/bcch_for_danny/
 VCF=${PROJDIR}/data/vcfs/Z_noW.all_ind.diploid.vcf.gz
 OUTDIR=${PROJDIR}/results/sex_inference
 PAR_END=${PAR_END:-50000000}   # end of PAR control
-BUFFER=${BUFFER:-1000000}      # sites near the PAR boundary are skipped (sex calls only)
+BUFFER=${BUFFER:-20000000}      # sites near the PAR boundary are skipped (sex calls only)
 MINQ=${MINQ:-30}
 WIN=${WIN:-500000}             # window size for depth along the Z
 mkdir -p ${OUTDIR} logs
