@@ -25,12 +25,7 @@ micromamba install -n genespace -c conda-forge -c bioconda orthofinder=2.5.5
 
 micromamba install -n genespace -c conda-forge -c bioconda mcscanx
 
-cd ~
-git clone https://github.com/wyp1125/MCScanX.git
-cd MCScanX
-sed -i '1i #include <unistd.h>' msa.h dissect_multiple_alignment.h detect_collinear_tandem_arrays.h
-make
-ls -l MCScanX_h
+micromamba install -n genespace -c conda-forge "r-dbscan<1.2"
 
 R
 remotes::install_github("jtlovell/GENESPACE", dependencies = FALSE, upgrade = "never")
