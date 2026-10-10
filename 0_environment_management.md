@@ -47,7 +47,6 @@ packageVersion("dbscan")   # should say 1.2.6
 library(GENESPACE)
 
 
-
 micromamba create -n of255 -c conda-forge -c bioconda orthofinder=2.5.5 python=3.10 "numpy<2"
 micromamba run -n of255 which orthofinder    # copy this path
 

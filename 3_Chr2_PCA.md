@@ -30,7 +30,9 @@ echo "In vcf but not in species lists (will be dropped):"
 comm -23 vcf_samples.txt list_samples.sorted.txt
 echo "In species lists but not in vcf:"
 comm -13 vcf_samples.txt list_samples.sorted.txt
-
+```
+Analyze admixture using all samples from bcch, moch, cach, and boch
+```
 # keep listed samples, biallelic snps, recompute AC/AN, drop sites with maf < 0.05
 bcftools view --threads ${THREADS} -S ${SAMPLES} --force-samples ${VCF} -Ou | \
 bcftools view --threads ${THREADS} -m2 -M2 -v snps -Ou | \
@@ -95,3 +97,223 @@ cat ${CHR}_admix.cv_error.txt
 
 # plot, grouped by species
 Rscript ${SCRIPTDIR}/3c_Chr2_admixture_plot.r ${OUTDIR} ${CHR}_admix ${SAMPLEINFO} ${KMIN} ${KMAX} ${CHR}
+```
+
+# Redo admix analysis with only moch, bcch, and cach (excluding boch)
+```
+
+SPECIES="BCCH MOCH CACH"
+SUBSET=bcch_moch_cach
+PREFIX=Chr2_${SUBSET}
+
+# keep list (FID IID; FID = IID because B1_PCA.sh used --double-id)
+awk -v sp="${SPECIES}" 'BEGIN{n=split(sp, a, " "); for (i=1; i<=n; i++) keep[a[i]]=1}
+    NR > 1 && ($2 in keep) {print $1"\t"$1}' ${SAMPLEINFO} > ${SUBSET}.keep.txt
+
+echo "Samples kept per species:"
+awk -v sp="${SPECIES}" 'BEGIN{n=split(sp, a, " "); for (i=1; i<=n; i++) keep[a[i]]=1}
+    NR > 1 && ($2 in keep) {print $2}' ${SAMPLEINFO} | sort | uniq -c
+
+# subset samples, re-apply maf and missingness filters within the subset
+plink --bfile Chr2 --allow-extra-chr \
+--keep ${SUBSET}.keep.txt \
+--maf 0.05 --geno 0.2 \
+--make-bed --out ${PREFIX}
+
+# prune linked snps within the subset: 50kb window, step of 1 snp, r2 threshold of 0.5
+plink --bfile ${PREFIX} --allow-extra-chr \
+--indep-pairwise 50kb 1 0.5 \
+--out ${PREFIX}_filtered
+
+plink --bfile ${PREFIX} --allow-extra-chr \
+--extract ${PREFIX}_filtered.prune.in \
+--make-bed --out ${PREFIX}_pruned
+
+echo "Samples: $(wc -l < ${PREFIX}_pruned.fam)"
+echo "Variants before pruning: $(wc -l < ${PREFIX}.bim)"
+echo "Variants after pruning: $(wc -l < ${PREFIX}_pruned.bim)"
+
+# admixture only accepts integer chromosome codes, so recode the chromosome column in a copy
+cp ${PREFIX}_pruned.bed ${PREFIX}_admix.bed
+cp ${PREFIX}_pruned.fam ${PREFIX}_admix.fam
+awk 'BEGIN{OFS="\t"} {$1=1; print}' ${PREFIX}_pruned.bim > ${PREFIX}_admix.bim
+
+# run admixture for each K with 10-fold cross-validation
+for K in $(seq ${KMIN} ${KMAX}); do
+    admixture --cv=10 -j${THREADS} -s 12345 ${PREFIX}_admix.bed ${K} | tee ${PREFIX}_admix.K${K}.log
+done
+
+# collect cross-validation error, lowest is the best supported K
+grep -h "CV error" ${PREFIX}_admix.K*.log | \
+sed -E 's/CV error \(K=([0-9]+)\): ([0-9.]+)/\1\t\2/' | \
+sort -n > ${PREFIX}_admix.cv_error.txt
+echo "Cross-validation error by K:"
+cat ${PREFIX}_admix.cv_error.txt
+
+# plot, grouped by species
+Rscript ${SCRIPTDIR}/3c_Chr2_admixture_plot.r ${OUTDIR} ${PREFIX}_admix ${SAMPLEINFO} ${KMIN} ${KMAX} ${PREFIX}
+
+```
+# Redo admix pairwise
+## BCCH MOCH
+```
+SPECIES="BCCH MOCH"
+SUBSET=bcch_moch
+PREFIX=Chr2_${SUBSET}
+
+# keep list (FID IID; FID = IID because B1_PCA.sh used --double-id)
+awk -v sp="${SPECIES}" 'BEGIN{n=split(sp, a, " "); for (i=1; i<=n; i++) keep[a[i]]=1}
+    NR > 1 && ($2 in keep) {print $1"\t"$1}' ${SAMPLEINFO} > ${SUBSET}.keep.txt
+
+echo "Samples kept per species:"
+awk -v sp="${SPECIES}" 'BEGIN{n=split(sp, a, " "); for (i=1; i<=n; i++) keep[a[i]]=1}
+    NR > 1 && ($2 in keep) {print $2}' ${SAMPLEINFO} | sort | uniq -c
+
+# subset samples, re-apply maf and missingness filters within the subset
+plink --bfile Chr2 --allow-extra-chr \
+--keep ${SUBSET}.keep.txt \
+--maf 0.05 --geno 0.2 \
+--make-bed --out ${PREFIX}
+
+# prune linked snps within the subset: 50kb window, step of 1 snp, r2 threshold of 0.5
+plink --bfile ${PREFIX} --allow-extra-chr \
+--indep-pairwise 50kb 1 0.5 \
+--out ${PREFIX}_filtered
+
+plink --bfile ${PREFIX} --allow-extra-chr \
+--extract ${PREFIX}_filtered.prune.in \
+--make-bed --out ${PREFIX}_pruned
+
+echo "Samples: $(wc -l < ${PREFIX}_pruned.fam)"
+echo "Variants before pruning: $(wc -l < ${PREFIX}.bim)"
+echo "Variants after pruning: $(wc -l < ${PREFIX}_pruned.bim)"
+
+# admixture only accepts integer chromosome codes, so recode the chromosome column in a copy
+cp ${PREFIX}_pruned.bed ${PREFIX}_admix.bed
+cp ${PREFIX}_pruned.fam ${PREFIX}_admix.fam
+awk 'BEGIN{OFS="\t"} {$1=1; print}' ${PREFIX}_pruned.bim > ${PREFIX}_admix.bim
+
+# run admixture for each K with 10-fold cross-validation
+for K in $(seq ${KMIN} ${KMAX}); do
+    admixture --cv=10 -j${THREADS} -s 12345 ${PREFIX}_admix.bed ${K} | tee ${PREFIX}_admix.K${K}.log
+done
+
+# collect cross-validation error, lowest is the best supported K
+grep -h "CV error" ${PREFIX}_admix.K*.log | \
+sed -E 's/CV error \(K=([0-9]+)\): ([0-9.]+)/\1\t\2/' | \
+sort -n > ${PREFIX}_admix.cv_error.txt
+echo "Cross-validation error by K:"
+cat ${PREFIX}_admix.cv_error.txt
+
+# plot, grouped by species
+Rscript ${SCRIPTDIR}/3c_Chr2_admixture_plot.r ${OUTDIR} ${PREFIX}_admix ${SAMPLEINFO} ${KMIN} ${KMAX} ${PREFIX}
+
+```
+## BCCH CACH
+```
+
+SPECIES="BCCH CACH"
+SUBSET=bcch_cach
+PREFIX=Chr2_${SUBSET}
+
+# keep list (FID IID; FID = IID because B1_PCA.sh used --double-id)
+awk -v sp="${SPECIES}" 'BEGIN{n=split(sp, a, " "); for (i=1; i<=n; i++) keep[a[i]]=1}
+    NR > 1 && ($2 in keep) {print $1"\t"$1}' ${SAMPLEINFO} > ${SUBSET}.keep.txt
+
+echo "Samples kept per species:"
+awk -v sp="${SPECIES}" 'BEGIN{n=split(sp, a, " "); for (i=1; i<=n; i++) keep[a[i]]=1}
+    NR > 1 && ($2 in keep) {print $2}' ${SAMPLEINFO} | sort | uniq -c
+
+# subset samples, re-apply maf and missingness filters within the subset
+plink --bfile Chr2 --allow-extra-chr \
+--keep ${SUBSET}.keep.txt \
+--maf 0.05 --geno 0.2 \
+--make-bed --out ${PREFIX}
+
+# prune linked snps within the subset: 50kb window, step of 1 snp, r2 threshold of 0.5
+plink --bfile ${PREFIX} --allow-extra-chr \
+--indep-pairwise 50kb 1 0.5 \
+--out ${PREFIX}_filtered
+
+plink --bfile ${PREFIX} --allow-extra-chr \
+--extract ${PREFIX}_filtered.prune.in \
+--make-bed --out ${PREFIX}_pruned
+
+echo "Samples: $(wc -l < ${PREFIX}_pruned.fam)"
+echo "Variants before pruning: $(wc -l < ${PREFIX}.bim)"
+echo "Variants after pruning: $(wc -l < ${PREFIX}_pruned.bim)"
+
+# admixture only accepts integer chromosome codes, so recode the chromosome column in a copy
+cp ${PREFIX}_pruned.bed ${PREFIX}_admix.bed
+cp ${PREFIX}_pruned.fam ${PREFIX}_admix.fam
+awk 'BEGIN{OFS="\t"} {$1=1; print}' ${PREFIX}_pruned.bim > ${PREFIX}_admix.bim
+
+# run admixture for each K with 10-fold cross-validation
+for K in $(seq ${KMIN} ${KMAX}); do
+    admixture --cv=10 -j${THREADS} -s 12345 ${PREFIX}_admix.bed ${K} | tee ${PREFIX}_admix.K${K}.log
+done
+
+# collect cross-validation error, lowest is the best supported K
+grep -h "CV error" ${PREFIX}_admix.K*.log | \
+sed -E 's/CV error \(K=([0-9]+)\): ([0-9.]+)/\1\t\2/' | \
+sort -n > ${PREFIX}_admix.cv_error.txt
+echo "Cross-validation error by K:"
+cat ${PREFIX}_admix.cv_error.txt
+
+# plot, grouped by species
+Rscript ${SCRIPTDIR}/3c_Chr2_admixture_plot.r ${OUTDIR} ${PREFIX}_admix ${SAMPLEINFO} ${KMIN} ${KMAX} ${PREFIX}
+```
+## MOCH CACH
+```
+
+SPECIES="MOCH CACH"
+SUBSET=moch_cach
+PREFIX=Chr2_${SUBSET}
+
+# keep list (FID IID; FID = IID because B1_PCA.sh used --double-id)
+awk -v sp="${SPECIES}" 'BEGIN{n=split(sp, a, " "); for (i=1; i<=n; i++) keep[a[i]]=1}
+    NR > 1 && ($2 in keep) {print $1"\t"$1}' ${SAMPLEINFO} > ${SUBSET}.keep.txt
+
+echo "Samples kept per species:"
+awk -v sp="${SPECIES}" 'BEGIN{n=split(sp, a, " "); for (i=1; i<=n; i++) keep[a[i]]=1}
+    NR > 1 && ($2 in keep) {print $2}' ${SAMPLEINFO} | sort | uniq -c
+
+# subset samples, re-apply maf and missingness filters within the subset
+plink --bfile Chr2 --allow-extra-chr \
+--keep ${SUBSET}.keep.txt \
+--maf 0.05 --geno 0.2 \
+--make-bed --out ${PREFIX}
+
+# prune linked snps within the subset: 50kb window, step of 1 snp, r2 threshold of 0.5
+plink --bfile ${PREFIX} --allow-extra-chr \
+--indep-pairwise 50kb 1 0.5 \
+--out ${PREFIX}_filtered
+
+plink --bfile ${PREFIX} --allow-extra-chr \
+--extract ${PREFIX}_filtered.prune.in \
+--make-bed --out ${PREFIX}_pruned
+
+echo "Samples: $(wc -l < ${PREFIX}_pruned.fam)"
+echo "Variants before pruning: $(wc -l < ${PREFIX}.bim)"
+echo "Variants after pruning: $(wc -l < ${PREFIX}_pruned.bim)"
+
+# admixture only accepts integer chromosome codes, so recode the chromosome column in a copy
+cp ${PREFIX}_pruned.bed ${PREFIX}_admix.bed
+cp ${PREFIX}_pruned.fam ${PREFIX}_admix.fam
+awk 'BEGIN{OFS="\t"} {$1=1; print}' ${PREFIX}_pruned.bim > ${PREFIX}_admix.bim
+
+# run admixture for each K with 10-fold cross-validation
+for K in $(seq ${KMIN} ${KMAX}); do
+    admixture --cv=10 -j${THREADS} -s 12345 ${PREFIX}_admix.bed ${K} | tee ${PREFIX}_admix.K${K}.log
+done
+
+# collect cross-validation error, lowest is the best supported K
+grep -h "CV error" ${PREFIX}_admix.K*.log | \
+sed -E 's/CV error \(K=([0-9]+)\): ([0-9.]+)/\1\t\2/' | \
+sort -n > ${PREFIX}_admix.cv_error.txt
+echo "Cross-validation error by K:"
+cat ${PREFIX}_admix.cv_error.txt
+
+# plot, grouped by species
+Rscript ${SCRIPTDIR}/3c_Chr2_admixture_plot.r ${OUTDIR} ${PREFIX}_admix ${SAMPLEINFO} ${KMIN} ${KMAX} ${PREFIX}
+```
