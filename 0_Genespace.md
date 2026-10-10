@@ -40,7 +40,7 @@ gpar <- run_genespace(gpar)
 
 roi <- data.frame(
     genome = c("zefi", "zefi"),
-    chr = c("Z", "1A"),
+    chr = c("NC_133063.1", "NC_133025.1"),
     color = c("#7f00e6", "#045b1b")
 )
 
@@ -56,7 +56,14 @@ ripZ <- plot_riparian(
   highlightBed    = roi,
   useRegions      = TRUE,      # plot only regions syntenic to the ROI
   backgroundColor = NULL,      # drop all non-Z blocks
-  useOrder        = FALSE      # x-axis in bp, not gene order
+  useOrder        = FALSE,     # x-axis in bp, not gene order
+  chrFill         = "grey90",  # chromosome boxes visible on white
+  chrBorderCol    = "grey30",  # chromosome outlines + scale bar
+  chrBorderLwd    = 0.3,
+  addThemes       = ggplot2::theme(
+    panel.background = ggplot2::element_rect(fill = "white", colour = NA),
+    plot.background  = ggplot2::element_rect(fill = "white", colour = NA)
+  )
 )
 dev.off()
 

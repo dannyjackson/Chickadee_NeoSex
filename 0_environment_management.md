@@ -10,6 +10,9 @@ echo 'export MAMBA_ROOT_PREFIX=$HOME/micromamba' >> ~/.bashrc
 
 micromamba create -n bcf -c conda-forge -c bioconda bcftools samtools htslib
 micromamba activate bcf
+micromamba install -n bcf -c conda-forge -c bioconda plink
+
+
 ```
 Create environment for genespace
 ```
