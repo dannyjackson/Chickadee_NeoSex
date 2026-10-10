@@ -29,7 +29,7 @@ REF=${PROJDIR}/data_from_will/ncbi_dataset/data/GCA_030490865.1/GCA_030490865.1_
 
 ```
 # Call variants
-## VCF 1: All samples, aligned to raw ref genome, only call variants on Z.
+## VCF 1: All species, female samples, aligned to raw ref genome, only call variants on Z.
 ```
 
 mkdir -p ${PROJDIR}/data/vcfs/
@@ -92,7 +92,7 @@ EOF
 
 nohup bash scripts/call.Z_noW.sh > scripts/call.Z_noW.log 2>&1 &
 ```
-## VCF 3: All samples, aligned to raw ref genome, only call variants on chr 2 (similar size to Z).
+## VCF 3: All species, female samples, aligned to raw ref genome, only call variants on chr 2 (similar size to Z).
 ```
 
 # call variants on Chr2 to confirm sex assignment
@@ -118,7 +118,7 @@ EOF
 
 nohup bash scripts/call.Chr2.sh > scripts/call.Chr2.log 2>&1 &
 ```
-## VCF 4: All samples, aligned to raw ref genome, call autosomes.
+## VCF 4: All species, female samples, aligned to raw ref genome, call autosomes.
 ```
 # make list of autosomes
 SCRIPTDIR=${PROJDIR}/scripts/Chickadee_NeoSex

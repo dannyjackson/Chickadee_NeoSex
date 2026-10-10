@@ -49,7 +49,7 @@ load("gs_run/results/gsParams.rda", verbose = TRUE)   # loads `gsParam`
 
 
 pdf("gs_run/riparian/bcch_chrZ_syntenic.pdf", width = 10, height = 5)
-ripZ <- plot_riparian(≠
+ripZ <- plot_riparian(
   gsParam         = gsParam,
   refGenome       = "bcch",
   genomeIDs       = c("gaga", "bcch", "moch", "zefi"),
