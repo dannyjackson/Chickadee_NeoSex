@@ -54,3 +54,19 @@ scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/pca/Chr2/admix_
 scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/pca/Chr2/admix_Chr2_bcch_moch_cach_K3.pdf .
 
 scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/pca/Chr2/admix_Chr2_bcch_moch_cach_K5.pdf .
+
+
+## bcch moch
+scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/pca/Chr2/admix_Chr2_bcch_moch_allK.pdf .
+
+scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/pca/Chr2/admix_Chr2_bcch_moch_K2.pdf .
+
+scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/pca/Chr2/admix_Chr2_bcch_moch_K4.pdf .
+
+scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/pca/Chr2/admix_Chr2_bcch_moch_K6.pdf .
+
+scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/pca/Chr2/admix_Chr2_bcch_moch_cv_error.pdf .
+
+scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/pca/Chr2/admix_Chr2_bcch_moch_K3.pdf .
+
+scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/pca/Chr2/admix_Chr2_bcch_moch_K5.pdf .
