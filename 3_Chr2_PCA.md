@@ -66,3 +66,32 @@ plink --bfile ${CHR}_pruned --allow-extra-chr \
 
 # plot, colored by species
 Rscript ${SCRIPTDIR}/3a_Chr2_PCA_plot.r ${OUTDIR}/${CHR}_pruned ${SAMPLEINFO} ${OUTDIR} ${CHR}
+
+# make 3d plot
+Rscript ${SCRIPTDIR}/3b_Chr2_PCA_plot3d.r ${PROJDIR}/analyses/pca/Chr2/Chr2_pruned \
+  ${PROJDIR}/reference_lists/sample_info.txt \
+  ${PROJDIR}/analyses/pca/Chr2 Chr2
+
+# make admixture plot
+KMIN=2
+KMAX=6
+
+# admixture only accepts integer chromosome codes, so copy the pruned files and recode the chromosome column
+cp ${CHR}_pruned.bed ${CHR}_admix.bed
+cp ${CHR}_pruned.fam ${CHR}_admix.fam
+awk 'BEGIN{OFS="\t"} {$1=1; print}' ${CHR}_pruned.bim > ${CHR}_admix.bim
+
+# run admixture for each K with 10-fold cross-validation
+for K in $(seq ${KMIN} ${KMAX}); do
+    admixture --cv=10 -j${THREADS} -s 12345 ${CHR}_admix.bed ${K} | tee ${CHR}_admix.K${K}.log
+done
+
+# collect cross-validation error, lowest is the best supported K
+grep -h "CV error" ${CHR}_admix.K*.log | \
+sed -E 's/CV error \(K=([0-9]+)\): ([0-9.]+)/\1\t\2/' | \
+sort -n > ${CHR}_admix.cv_error.txt
+echo "Cross-validation error by K:"
+cat ${CHR}_admix.cv_error.txt
+
+# plot, grouped by species
+Rscript ${SCRIPTDIR}/3c_Chr2_admixture_plot.r ${OUTDIR} ${CHR}_admix ${SAMPLEINFO} ${KMIN} ${KMAX} ${CHR}

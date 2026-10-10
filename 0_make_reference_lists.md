@@ -9,7 +9,7 @@ cp ${PROJDIR}/data_from_will/new_data/sample_list.txt  ${PROJDIR}/reference_list
 
 cp ${PROJDIR}/data_from_will/cach/sample_list.txt  ${PROJDIR}/reference_lists/cach_samples.txt
 
-cp ${PROJDIR}/data_from_will/boch/sample_list.txt  ${PROJDIR}/reference_lists/boch_samples.txt
+ls ../data_from_will/boch/bam_files/ | awk -F "." '{print $1}' >  ${PROJDIR}/reference_lists/boch_samples.txt
 
 
 

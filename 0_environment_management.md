@@ -3,7 +3,7 @@ Install micromamba
 ```
 "${SHELL}" <(curl -L micro.mamba.pm/install.sh)
 ```
-Create environment for packages related to bcf/vcf management
+Create environment for packages related to bcf/vcf management and pop gen analyses using genotype calls
 ```
 export MAMBA_ROOT_PREFIX=$HOME/micromamba
 echo 'export MAMBA_ROOT_PREFIX=$HOME/micromamba' >> ~/.bashrc
@@ -11,7 +11,8 @@ echo 'export MAMBA_ROOT_PREFIX=$HOME/micromamba' >> ~/.bashrc
 micromamba create -n bcf -c conda-forge -c bioconda bcftools samtools htslib
 micromamba activate bcf
 micromamba install -n bcf -c conda-forge -c bioconda plink
-
+micromamba install -c conda-forge r-plotly r-htmlwidgets r-scatterplot3d pandoc
+micromamba install -c conda-forge -c bioconda admixture r-tidyr
 
 ```
 Create environment for genespace
@@ -49,6 +50,14 @@ library(GENESPACE)
 
 micromamba create -n of255 -c conda-forge -c bioconda orthofinder=2.5.5 python=3.10 "numpy<2"
 micromamba run -n of255 which orthofinder    # copy this path
+
+
+micromamba env export -n genespace --explicit > ${PROJDIR}/reference_lists/genespace.lock.txt
+micromamba env export -n of255 --explicit > ${PROJDIR}/reference_lists/of255.lock.txt
+
+# environments can be recreated with lock files found under env_management github:
+# micromamba create -n genespace -f genespace.lock.txt
+# micromamba create -n of255 -f of255.lock.txt
 ```
 # Managing project environment
 Consistent variables across scripts

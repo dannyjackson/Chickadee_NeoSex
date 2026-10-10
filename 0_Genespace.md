@@ -67,5 +67,65 @@ ripZ <- plot_riparian(
 )
 dev.off()
 
+# remove bcch W
 
+blks <- data.table::as.data.table(ripZ$blks)
+unique(c(blks[genome1 == "bcch", chr1], blks[genome2 == "bcch", chr2]))
+
+dropChr <- "NC_081288.1"   # use the exact name printed above
+
+blks2 <- blks[!(genome1 == "bcch" & chr1 == dropChr) &
+              !(genome2 == "bcch" & chr2 == dropChr)]
+
+bed <- GENESPACE:::read_combBed(file.path(gsParam$paths$results, "combBed.txt"))
+
+pdf("gs_run/riparian/bcch_chrZ_syntenic_noNC081288.pdf", width = 10, height = 5)
+ripZ2 <- riparian_engine(
+  blk          = blks2,
+  bed          = bed,
+  refGenome    = "bcch",
+  genomeIDs    = c("gaga", "bcch", "moch", "zefi"),
+  useOrder     = FALSE,
+  chrFill      = "grey90",
+  chrBorderCol = "grey30",
+  chrBorderLwd = 0.3,
+  addThemes    = ggplot2::theme(
+    panel.background = ggplot2::element_rect(fill = "white", colour = NA),
+    plot.background  = ggplot2::element_rect(fill = "white", colour = NA)
+  )
+)
+print(ripZ2$ggplotObj)
+dev.off()
+
+
+
+# remove bcch Z
+
+blks <- data.table::as.data.table(ripZ$blks)
+unique(c(blks[genome1 == "bcch", chr1], blks[genome2 == "bcch", chr2]))
+
+dropChr <- "NC_081289.1"   # use the exact name printed above
+
+blks2 <- blks[!(genome1 == "bcch" & chr1 == dropChr) &
+              !(genome2 == "bcch" & chr2 == dropChr)]
+
+bed <- GENESPACE:::read_combBed(file.path(gsParam$paths$results, "combBed.txt"))
+
+pdf("gs_run/riparian/bcch_chrZ_syntenic_noNC081289.pdf", width = 10, height = 5)
+ripZ2 <- riparian_engine(
+  blk          = blks2,
+  bed          = bed,
+  refGenome    = "bcch",
+  genomeIDs    = c("gaga", "bcch", "moch", "zefi"),
+  useOrder     = FALSE,
+  chrFill      = "grey90",
+  chrBorderCol = "grey30",
+  chrBorderLwd = 0.3,
+  addThemes    = ggplot2::theme(
+    panel.background = ggplot2::element_rect(fill = "white", colour = NA),
+    plot.background  = ggplot2::element_rect(fill = "white", colour = NA)
+  )
+)
+print(ripZ2$ggplotObj)
+dev.off()
 ```
