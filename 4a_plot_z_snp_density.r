@@ -6,7 +6,7 @@ suppressPackageStartupMessages({
 })
 
 args   <- commandArgs(trailingOnly = TRUE)
-infile <- if (length(args) >= 1) args[1] else "z_sites.tsv"
+infile <- if (length(args) >= 1) args[1] else "sex_limited_sites.tsv"
 chrom  <- if (length(args) >= 2) args[2] else "CM059970.1"
 win    <- if (length(args) >= 3) as.numeric(args[3]) else 1e5
 
