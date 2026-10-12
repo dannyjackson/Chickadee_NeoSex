@@ -7,13 +7,14 @@ suppressPackageStartupMessages({
 
 args   <- commandArgs(trailingOnly = TRUE)
 infile <- if (length(args) >= 1) args[1] else "sex_limited_sites.tsv"
-chrom  <- if (length(args) >= 2) args[2] else "CM059970.1"
+target_chrom <- if (length(args) >= 2) args[2] else "CM059970.1"
 win    <- if (length(args) >= 3) as.numeric(args[3]) else 1e5
 
 d <- fread(infile, header = FALSE, col.names = c("chrom", "pos", "AC", "cM"),
            colClasses = c("character", "numeric", "character", "character"))
-d <- d[chrom == ..chrom]
-if (nrow(d) == 0) stop("No sites for ", chrom, " in ", infile)
+d <- d[d$chrom == target_chrom]
+if (nrow(d) == 0) stop("No sites for ", target_chrom, " in ", infile)
+chrom <- target_chrom   # used in titles and the output file name below
 
 # Variable in this sample = any non-zero allele count (handles multiallelic "1,0")
 d[, polymorphic := !grepl("^0(,0)*$", AC) & AC != "."]

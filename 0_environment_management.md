@@ -13,6 +13,7 @@ micromamba activate bcf
 micromamba install -n bcf -c conda-forge -c bioconda plink
 micromamba install -c conda-forge r-plotly r-htmlwidgets r-scatterplot3d pandoc
 micromamba install -c conda-forge -c bioconda admixture r-tidyr
+micromamba install -c conda-forge r-patchwork
 
 ```
 Create environment for genespace
@@ -57,6 +58,21 @@ micromamba env export -n of255 --explicit > ${PROJDIR}/reference_lists/of255.loc
 # environments can be recreated with lock files found under env_management github:
 # micromamba create -n genespace -f genespace.lock.txt
 # micromamba create -n of255 -f of255.lock.txt
+```
+PhaseWY
+```
+micromamba create -n Snakemake_PhaseWY -c conda-forge -c bioconda snakemake=8.27.1 conda
+micromamba activate Snakemake_PhaseWY
+
+cd /nas/bcch_for_danny/scripts/Snakemake_PhaseWY
+
+cp -r slurm local
+```
+Repeat modeler
+```
+micromamba create -n repeats -c conda-forge -c bioconda repeatmodeler repeatmasker bedtools
+micromamba activate repeats
+RepeatModeler -version
 ```
 # Managing project environment
 Consistent variables across scripts

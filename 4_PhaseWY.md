@@ -177,10 +177,13 @@ sed -i 's/Inverse_MAF/Hamming/g' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.bc
 
 
 # Visualize snps on sex limted chr
+cd ${SCRIPTDIR}/Chickadee_NeoSex
+git pull
+
 cd /nas/bcch_for_danny/scripts/Snakemake_PhaseWY/results/moch_sex_depth_0.75_whatshap_ON/mac_1_window_10000_step_2500_model_Hamming
 # 1. Pull position, allele count and genetic position (fast; skips genotypes)
 micromamba activate bcf
 
 bcftools query -f '%CHROM\t%POS\t%INFO/AC\t%INFO/CM\n' vcfs/sexlimited.vcf.gz > sex_limited_sites.tsv
 
-Rscript 4a_plot_z_snp_density.R z_sites.tsv CM059970.1 100000
+Rscript ${SCRIPTDIR}/Chickadee_NeoSex/4a_plot_z_snp_density.R sex_limited_sites.tsv CM059970.1 100000
