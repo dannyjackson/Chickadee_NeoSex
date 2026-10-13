@@ -1,178 +1,188 @@
 #!/bin/bash
 # -----------------------------------------------------------------------------
-# Infer sex of each sample from mean read depth on the Z, normalized by the
-# pseudoautosomal region (PAR, first PAR_END bp of the Z).
-#   PAR        : POS <= PAR_END                      (diploid in both sexes)
-#   gap        : PAR_END < POS <= PAR_END + BUFFER   (skipped for sex calls)
-#   Z-specific : POS >  PAR_END + BUFFER
-#   ratio = mean DP (Z-specific) / mean DP (PAR); males (ZZ) ~1, females (ZW) ~0.5
-# Samples are assigned M/F by 2-cluster k-means on the ratio (all species pooled).
-# Plots are split by species (from reference_lists/<sp>_samples.txt).
+# Infer sex of each sample in one species from read depth on the ancestral Z,
+# normalized by the same sample's mean depth across the autosomes.
+#   ratio = mean DP (ancestral Z: ANC_START-ANC_END) / mean DP (autosomes)
+#   males (ZZ) ~ 1, females (ZW) ~ 0.5
+# Samples are assigned M/F by 2-cluster k-means on the ratio (within species).
+# Also plots raw mean DP in windows along the whole Z for every individual.
 #
-# Run (from anywhere):
-#   nohup bash 2a_infer_sex.zdepth.sh > /nas/bcch_for_danny/analyses/sex_inference/infer_sex_Zdepth.log 2>&1 &
-# Optional overrides: PAR_END=50000000 BUFFER=20000000 MINQ=30 WIN=500000
+# Usage:
+#   bash 2a_infer_sex.zdepth.sh <Z_VCF> <AUTOSOME_VCF> [SPECIES_LABEL]
+#   SPECIES_LABEL defaults to the 2nd dot-field of the Z VCF name
+#   (Z_noW.bcch.diploid.vcf.gz -> bcch).
+#
+# Run all four species (from 2_Infer_Sex.md):
+#   PROJDIR=/nas/bcch_for_danny
+#   for sp in bcch cach moch boch; do
+#     mkdir -p ${PROJDIR}/analyses/sex_inference/${sp}
+#     nohup bash 2a_infer_sex.zdepth.sh \
+#       ${PROJDIR}/data/vcfs/Z_noW.${sp}.diploid.vcf.gz \
+#       ${PROJDIR}/data/vcfs/autosomes.all_ind.diploid.vcf.gz \
+#       > ${PROJDIR}/analyses/sex_inference/${sp}/infer_sex.log 2>&1 &
+#   done
+#   Autosomal depth is computed once (all samples) and cached; parallel runs
+#   wait for each other on a lock instead of recomputing it.
+#
+# Optional env overrides:
+#   ANC_START=65501052 ANC_END=146584261 MINQ=30 WIN=500000
+#   AUTO_REGIONS=chr1,chr2   # restrict autosomal depth to some chromosomes
+#                            # (faster; needs an indexed VCF)
 # -----------------------------------------------------------------------------
 set -euo pipefail
 
+Z_VCF=${1:?Usage: $0 <Z_VCF> <AUTOSOME_VCF> [SPECIES_LABEL]}
+AUTO_VCF=${2:?Usage: $0 <Z_VCF> <AUTOSOME_VCF> [SPECIES_LABEL]}
+SP=${3:-$(basename ${Z_VCF} | cut -d. -f2)}
+
 PROJDIR=/nas/bcch_for_danny
-VCF=${PROJDIR}/data/vcfs/Z_noW.all_ind.diploid.vcf.gz
-OUTDIR=${PROJDIR}/analyses/sex_inference
-REFLISTS=${PROJDIR}/reference_lists
-SPECIES="bcch cach moch boch"     # expects ${REFLISTS}/<sp>_samples.txt
-PAR_END=${PAR_END:-50000000}      # end of PAR control
-BUFFER=${BUFFER:-20000000}        # gap after the PAR excluded from sex calls
+OUTBASE=${PROJDIR}/analyses/sex_inference
+OUTDIR=${OUTBASE}/${SP}
+ANC_START=${ANC_START:-65501052}   # ancestral Z
+ANC_END=${ANC_END:-146584261}
 MINQ=${MINQ:-30}
-WIN=${WIN:-500000}                # window size for depth along the Z
+WIN=${WIN:-500000}
+AUTO_REGIONS=${AUTO_REGIONS:-}
 mkdir -p ${OUTDIR}
 
-echo "[$(date)] Summarizing per-sample depth from ${VCF}"
-echo "  PAR: 1-${PAR_END}; gap: to $((PAR_END + BUFFER)); window: ${WIN}"
+echo "[$(date)] Species: ${SP}"
+echo "  Z VCF:        ${Z_VCF}"
+echo "  Autosome VCF: ${AUTO_VCF}"
+echo "  Ancestral Z:  ${ANC_START}-${ANC_END}; window: ${WIN}; QUAL>=${MINQ}"
 
-# Species key: sample <tab> species, from the per-species sample lists
-: > ${OUTDIR}/species_key.tsv
-for sp in ${SPECIES}; do
-  f=${REFLISTS}/${sp}_samples.txt
-  if [[ -s ${f} ]]; then
-    awk -v sp=${sp} 'NF{print $1"\t"toupper(sp)}' ${f} >> ${OUTDIR}/species_key.tsv
+# --- 1. Autosomal mean DP per sample (all samples, cached, shared by runs) ---
+REGTAG=$( [[ -n ${AUTO_REGIONS} ]] && echo ".$(echo ${AUTO_REGIONS} | tr ',' '_')" || true )
+AUTO_TSV=${OUTBASE}/autosome_depth.$(basename ${AUTO_VCF} .vcf.gz).Q${MINQ}${REGTAG}.tsv
+(
+  flock 9
+  if [[ -s ${AUTO_TSV} ]]; then
+    echo "[$(date)] Using cached autosomal depth: ${AUTO_TSV}"
   else
-    echo "  WARNING: ${f} missing or empty"
+    echo "[$(date)] Computing autosomal depth (slow, done once): ${AUTO_TSV}"
+    REG=""; [[ -n ${AUTO_REGIONS} ]] && REG="-r ${AUTO_REGIONS}"
+    bcftools view ${REG} -m2 -M2 -v snps -i "QUAL>=${MINQ}" ${AUTO_VCF} \
+    | bcftools query -f '[%SAMPLE\t%GT\t%DP\n]' \
+    | awk 'BEGIN{OFS="\t"}
+        $2 !~ /\./ && $3 != "." { n[$1]++; d[$1] += $3 }
+        END{ print "sample", "n_auto", "dp_auto"
+             for (s in n) print s, n[s], d[s] / n[s] }' \
+    > ${AUTO_TSV}.tmp
+    mv ${AUTO_TSV}.tmp ${AUTO_TSV}
   fi
-done
+) 9> ${AUTO_TSV}.lock
 
-# One pass over biallelic SNPs (missing GT/DP skipped):
-#   stdout -> mean DP per sample in PAR and Z-specific regions
-#   winout -> mean DP and site count per sample per window (whole Z)
-bcftools view -m2 -M2 -v snps -i "QUAL>=${MINQ}" ${VCF} \
+# --- 2. Z: ancestral-Z mean DP per sample + windowed DP along the whole Z ---
+echo "[$(date)] Summarizing Z depth"
+bcftools view -m2 -M2 -v snps -i "QUAL>=${MINQ}" ${Z_VCF} \
 | bcftools query -f '%POS[\t%SAMPLE\t%GT\t%DP]\n' \
-| awk -v par=${PAR_END} -v buf=${BUFFER} -v win=${WIN} \
+| awk -v a0=${ANC_START} -v a1=${ANC_END} -v win=${WIN} \
       -v winout=${OUTDIR}/Z_window_depth.tsv 'BEGIN{OFS="\t"}
     {
-      w = int(($1 - 1) / win)
-      if ($1 <= par) r = "PAR"
-      else if ($1 > par + buf) r = "Z"
-      else r = ""
+      w = int(($1 - 1) / win); anc = ($1 >= a0 && $1 <= a1)
       for (i = 2; i <= NF; i += 3) {
         if ($(i+1) ~ /\./ || $(i+2) == ".") continue
         s[$i] = 1
         wn[$i, w]++; wd[$i, w] += $(i+2); if (w > maxw) maxw = w
-        if (r != "") { n[$i, r]++; d[$i, r] += $(i+2) }
+        if (anc) { n[$i]++; d[$i] += $(i+2) }
       }
     }
     END{
-      print "sample", "n_PAR", "dp_PAR", "n_Z", "dp_Z", "dp_ratio"
-      for (x in s) {
-        p = n[x, "PAR"] ? d[x, "PAR"] / n[x, "PAR"] : "NA"
-        z = n[x, "Z"]   ? d[x, "Z"]   / n[x, "Z"]   : "NA"
-        print x, n[x, "PAR"] + 0, p, n[x, "Z"] + 0, z, (p != "NA" && z != "NA" && p > 0) ? z / p : "NA"
-      }
+      print "sample", "n_Zanc", "dp_Zanc"
+      for (x in s) print x, n[x] + 0, (n[x] ? d[x] / n[x] : "NA")
       print "sample", "win_start", "win_end", "n_sites", "mean_dp" > winout
       for (x in s) for (k = 0; k <= maxw; k++) if (wn[x, k])
         print x, k * win + 1, (k + 1) * win, wn[x, k], wd[x, k] / wn[x, k] > winout
     }' \
-| { IFS= read -r hdr; echo "${hdr}"; sort -k1,1; } > ${OUTDIR}/Z_PAR_depth.tsv
+> ${OUTDIR}/Z_depth.tsv
 
+# --- 3. Ratio, k-means sex calls, plots ---
 echo "[$(date)] Clustering and plotting"
-
-Rscript - ${OUTDIR} ${PAR_END} ${BUFFER} <<'EOF'
+Rscript - ${OUTDIR} ${AUTO_TSV} ${SP} ${ANC_START} ${ANC_END} <<'EOF'
 args <- commandArgs(TRUE)
-out <- args[1]; par_end <- as.numeric(args[2]); buffer <- as.numeric(args[3])
-d <- read.delim(file.path(out, "Z_PAR_depth.tsv"))
+out <- args[1]; auto_f <- args[2]; sp <- toupper(args[3])
+anc <- as.numeric(args[4:5]) / 1e6
 
-## --- Species assignment ---
-# Match VCF sample names to sample lists; names are compared after stripping any
-# directory and extension (e.g. /path/S1.sorted.bam -> S1) so either form works.
+z    <- read.delim(file.path(out, "Z_depth.tsv"))
+auto <- read.delim(auto_f)
+
+# Z and autosome VCFs come from different BAM sets; match names after
+# stripping directory and extension (/path/S1.sorted.bam -> S1).
 norm <- function(x) sub("\\..*$", "", basename(x))
-kf <- file.path(out, "species_key.tsv")
-key <- if (file.size(kf) > 0) read.delim(kf, header = FALSE, col.names = c("id", "species"))
-       else data.frame(id = character(), species = character())
-key$id <- norm(key$id)
-dups <- key$id[duplicated(key$id)]
-if (length(dups)) cat("WARNING: samples in >1 species list:", unique(dups), "\n")
-key <- key[!duplicated(key$id), ]
-d$species <- key$species[match(norm(d$sample), key$id)]
-d$species[is.na(d$species)] <- "unassigned"
-if (any(d$species == "unassigned"))
-  cat("WARNING: no species for:", d$sample[d$species == "unassigned"], "\n")
-miss <- setdiff(key$id, norm(d$sample))
-if (length(miss)) cat("Note: in sample lists but not in VCF:", miss, "\n")
+auto$id <- norm(auto$sample)
+m <- match(norm(z$sample), auto$id)
+z$n_auto  <- auto$n_auto[m]
+z$dp_auto <- auto$dp_auto[m]
+z$dp_ratio <- z$dp_Zanc / z$dp_auto
+if (any(is.na(m)))
+  cat("WARNING: no autosomal depth for:", z$sample[is.na(m)], "\n")
 
-## --- Sex calls: 2-cluster k-means on Z/PAR depth ratio (species pooled) ---
-ok <- !is.na(d$dp_ratio)
-set.seed(1)
-km <- kmeans(d$dp_ratio[ok], centers = 2, nstart = 50)
-fem <- which.min(km$centers)                      # lower-depth cluster = ZW
-d$sex <- NA
-d$sex[ok] <- ifelse(km$cluster == fem, "F", "M")
-cut <- mean(km$centers)                           # boundary between clusters
+ok <- !is.na(z$dp_ratio)
+z$sex <- NA
+if (sum(ok) >= 2 && length(unique(z$dp_ratio[ok])) >= 2) {
+  set.seed(1)
+  km <- kmeans(z$dp_ratio[ok], centers = 2, nstart = 50)
+  z$sex[ok] <- ifelse(km$cluster == which.min(km$centers), "F", "M")
+  cut <- mean(km$centers)
+  cat("Cluster centers (Zanc/autosome depth):", round(sort(km$centers), 3),
+      " boundary:", round(cut, 3), "\n")
+  # k-means always makes two groups; warn if both sit on the same side of 0.75
+  if (all(km$centers < 0.75) || all(km$centers > 0.75))
+    cat("WARNING: both clusters on one side of 0.75 - may be a single-sex sample\n")
+} else {
+  cut <- NA; cat("WARNING: too few samples with a ratio to cluster\n")
+}
 
-d <- d[order(d$species, d$dp_ratio), ]
-write.table(d, file.path(out, "sex_calls.tsv"), sep = "\t",
-            quote = FALSE, row.names = FALSE)
-
-cat("Cluster centers (Z/PAR depth):", round(sort(km$centers), 3),
-    " boundary:", round(cut, 3), "\n")
-print(table(d$species, d$sex, useNA = "ifany"))
+z <- z[order(z$dp_ratio), ]
+z$species <- sp
+write.table(z[, c("sample", "species", "n_auto", "dp_auto", "n_Zanc", "dp_Zanc",
+                  "dp_ratio", "sex")],
+            file.path(out, "sex_calls.tsv"), sep = "\t", quote = FALSE, row.names = FALSE)
+print(table(z$sex, useNA = "ifany"))
 
 cols <- c(F = "#D55E00", M = "#0072B2")
-sp_levels <- unique(d$species)
-nsp <- length(sp_levels)
+nF <- sum(z$sex == "F", na.rm = TRUE); nM <- sum(z$sex == "M", na.rm = TRUE)
 
-## --- Plot 1: Z/PAR ratio per sample, one panel per species ---
-pdf(file.path(out, "sex_calls.pdf"), width = 3 + 2.2 * nsp, height = 4.5)
-par(mfrow = c(1, nsp), mar = c(4, 4, 2.5, 0.5), oma = c(0, 0, 0, 0))
-ylim <- c(0, max(1.3, d$dp_ratio, na.rm = TRUE))
-for (sp in sp_levels) {
-  ds <- d[d$species == sp & !is.na(d$dp_ratio), ]
-  if (!nrow(ds)) { plot.new(); title(main = paste(sp, "(no ratio)")); next }
-  plot(seq_len(nrow(ds)), ds$dp_ratio, pch = 21, bg = cols[ds$sex], cex = 1.2,
-       ylim = ylim, xlim = c(0.5, max(nrow(ds), 1) + 0.5),
-       main = sprintf("%s (F=%d, M=%d)", sp, sum(ds$sex == "F"), sum(ds$sex == "M")),
-       xlab = "Samples (ranked)",
-       ylab = if (sp == sp_levels[1]) "Z-specific / PAR mean depth" else "")
-  abline(h = c(0.5, 1), lty = 2, col = "grey60")
-  abline(h = cut, col = "red", lty = 3)
-}
+## Plot 1: ratio per sample
+zs <- z[ok, ]
+pdf(file.path(out, "sex_calls.pdf"), width = max(5, 2 + 0.18 * nrow(zs)), height = 4.5)
+par(mar = c(7, 4.5, 3, 1))
+plot(seq_len(nrow(zs)), zs$dp_ratio, pch = 21, bg = cols[zs$sex], cex = 1.2,
+     ylim = c(0, max(1.3, zs$dp_ratio)), xaxt = "n", xlab = "",
+     ylab = "Ancestral Z / autosome mean depth",
+     main = sprintf("%s (F=%d, M=%d)", sp, nF, nM))
+axis(1, at = seq_len(nrow(zs)), labels = zs$sample, las = 2, cex.axis = 0.6)
+abline(h = c(0.5, 1), lty = 2, col = "grey60")
+if (!is.na(cut)) abline(h = cut, col = "red", lty = 3)
 legend("bottomright", c("F (ZW)", "M (ZZ)", "k-means boundary"),
        pt.bg = c(cols, NA), pch = c(21, 21, NA), lty = c(NA, NA, 3),
        col = c("black", "black", "red"), bty = "n", cex = 0.8)
 dev.off()
 
-## --- Plot 2: raw windowed depth for every individual, one panel per species ---
+## Plot 2: raw windowed depth along the Z, every individual
 w <- read.delim(file.path(out, "Z_window_depth.tsv"))
-w <- merge(w, d[, c("sample", "species", "sex")], by = "sample")
-w <- w[!is.na(w$sex), ]
+w <- merge(w, z[, c("sample", "sex")], by = "sample")
+w$sex[is.na(w$sex)] <- "unknown"
 w$mid_mb <- (w$win_start + w$win_end) / 2 / 1e6
 w <- w[order(w$sample, w$mid_mb), ]
 write.table(w, file.path(out, "Z_window_depth_sex.tsv"), sep = "\t",
             quote = FALSE, row.names = FALSE)
 
-xr <- range(w$mid_mb)
-pdf(file.path(out, "Z_window_depth.pdf"), width = 11, height = 2.6 * nsp + 0.6)
-par(mfrow = c(nsp, 1), mar = c(2, 4.5, 2, 1), oma = c(2.5, 0, 0, 0))
-for (sp in sp_levels) {
-  ws <- w[w$species == sp, ]
-  if (!nrow(ws)) { plot.new(); title(main = paste(sp, "(no sexed samples)")); next }
-  ymax <- quantile(ws$mean_dp, 0.995, na.rm = TRUE) * 1.05   # trim spikes
-  plot(NA, xlim = xr, ylim = c(0, ymax), xlab = "", ylab = "Mean DP per window",
-       main = sprintf("%s (F=%d, M=%d)", sp,
-                      length(unique(ws$sample[ws$sex == "F"])),
-                      length(unique(ws$sample[ws$sex == "M"]))))
-  rect(0, -1, par_end / 1e6, ymax * 2, col = "grey92", border = NA)
-  rect(par_end / 1e6, -1, (par_end + buffer) / 1e6, ymax * 2,
-       col = "grey97", border = NA)
-  # draw females last so they are never hidden under the (usually more) males
-  for (sx in c("M", "F")) for (s in unique(ws$sample[ws$sex == sx])) {
-    wi <- ws[ws$sample == s, ]
-    lines(wi$mid_mb, wi$mean_dp, col = adjustcolor(cols[sx], 0.6), lwd = 0.7)
-  }
-  box()
-  if (sp == sp_levels[1])
-    legend("topright", c("F (ZW)", "M (ZZ)", "PAR control", "excluded gap"),
-           col = c(cols, "grey85", "grey95"), lwd = c(1.5, 1.5, 8, 8),
-           bty = "n", cex = 0.8, ncol = 4)
+lcols <- c(cols, unknown = "grey40")
+ymax <- quantile(w$mean_dp, 0.995, na.rm = TRUE) * 1.05   # trim spikes
+pdf(file.path(out, "Z_window_depth.pdf"), width = 11, height = 4.5)
+par(mar = c(4.5, 4.5, 3, 1))
+plot(NA, xlim = range(w$mid_mb), ylim = c(0, ymax),
+     xlab = "Position on Z (Mb)", ylab = "Mean DP per window",
+     main = sprintf("%s (F=%d, M=%d)", sp, nF, nM))
+rect(anc[1], -1, anc[2], ymax * 2, col = "grey93", border = NA)
+# females drawn last so they are never hidden under males
+for (sx in c("unknown", "M", "F")) for (s in unique(w$sample[w$sex == sx])) {
+  wi <- w[w$sample == s, ]
+  lines(wi$mid_mb, wi$mean_dp, col = adjustcolor(lcols[sx], 0.6), lwd = 0.7)
 }
-mtext("Position on Z (Mb)", side = 1, outer = TRUE, line = 1)
+box()
+legend("topleft", c("F (ZW)", "M (ZZ)", "ancestral Z (used for ratio)"),
+       col = c(cols, "grey85"), lwd = c(1.5, 1.5, 8), bty = "n", cex = 0.8, ncol = 3)
 dev.off()
 EOF
 

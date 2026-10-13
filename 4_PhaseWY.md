@@ -115,6 +115,68 @@ SPECIES=new_data
 # 2. Summary
 column -t "$OUT"
 echo "Females: $(grep -c HETGAM "$OUT")   Males: $(grep -c HOMGAM "$OUT")"
+
+
+################################################
+# file for cach
+################################################
+
+SEX=/nas/bcch_for_danny/analyses/sex_inference/sex_calls.tsv
+BAMS=/nas/bcch_for_danny/reference_lists/sorted_bams.noW_genome.txt
+DEPTH=/nas/bcch_for_danny/data/vcfs/depth_check/zchr.idepth
+OUT=/nas/bcch_for_danny/reference_lists/cach_samples.phaseWY_table.txt
+SPECIES=cach
+
+# 1. Build the table
+{
+  printf "sample_name\tdepth\tsex\tploidy\tbamfile\n"
+  awk -v OFS='\t' '
+    FILENAME==ARGV[1] { if (FNR>1) sex[$1]=$NF; next }   # sex = last column
+    FILENAME==ARGV[2] { if (FNR>1) dp[$1]=$3;  next }    # MEAN_DEPTH
+    {
+      bam=$0; n=split(bam,p,"/"); s=p[n]; sub(/_sorted.*/,"",s)
+      if (!(s in sex)) { print "SKIP (no sex call): " s > "/dev/stderr"; next }
+      if (!(s in dp))  { print "SKIP (no depth): "    s > "/dev/stderr"; next }
+      if (sex[s]=="F") g="HETGAM"; else if (sex[s]=="M") g="HOMGAM"
+      else { print "SKIP (sex=" sex[s] "): " s > "/dev/stderr"; next }
+      print s, dp[s], g, 2, bam
+    }' "$SEX" "$DEPTH" <(grep "/${SPECIES}/" "$BAMS")
+} > "$OUT"
+
+# 2. Summary
+column -t "$OUT"
+echo "Females: $(grep -c HETGAM "$OUT")   Males: $(grep -c HOMGAM "$OUT")"
+
+################################################
+# file for boch
+################################################
+
+SEX=/nas/bcch_for_danny/analyses/sex_inference/sex_calls.tsv
+BAMS=/nas/bcch_for_danny/reference_lists/sorted_bams.noW_genome.txt
+DEPTH=/nas/bcch_for_danny/data/vcfs/depth_check/zchr.idepth
+OUT=/nas/bcch_for_danny/reference_lists/boch_samples.phaseWY_table.txt
+SPECIES=boch
+
+# 1. Build the table
+{
+  printf "sample_name\tdepth\tsex\tploidy\tbamfile\n"
+  awk -v OFS='\t' '
+    FILENAME==ARGV[1] { if (FNR>1) sex[$1]=$NF; next }   # sex = last column
+    FILENAME==ARGV[2] { if (FNR>1) dp[$1]=$3;  next }    # MEAN_DEPTH
+    {
+      bam=$0; n=split(bam,p,"/"); s=p[n]; sub(/_sorted.*/,"",s)
+      if (!(s in sex)) { print "SKIP (no sex call): " s > "/dev/stderr"; next }
+      if (!(s in dp))  { print "SKIP (no depth): "    s > "/dev/stderr"; next }
+      if (sex[s]=="F") g="HETGAM"; else if (sex[s]=="M") g="HOMGAM"
+      else { print "SKIP (sex=" sex[s] "): " s > "/dev/stderr"; next }
+      print s, dp[s], g, 2, bam
+    }' "$SEX" "$DEPTH" <(grep "/${SPECIES}/" "$BAMS")
+} > "$OUT"
+
+# 2. Summary
+column -t "$OUT"
+echo "Females: $(grep -c HETGAM "$OUT")   Males: $(grep -c HOMGAM "$OUT")"
+
 ```
 Make list of contigs in vcf
 ```
@@ -158,10 +220,19 @@ snakemake -s ${SCRIPTDIR}/Snakemake_PhaseWY/workflow/PhaseWY --profile ${SCRIPTD
 snakemake -s${SCRIPTDIR}/Snakemake_PhaseWY/workflow/PhaseWY --profile ${SCRIPTDIR}/Snakemake_PhaseWY/local --configfile ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.moch.yaml \
   --conda-prefix ~/snakemake_envs/phasewy --rerun-incomplete
 
-# make additional yamls
-## make yaml for bcch
+## make yaml for bcch and associated file
 grep 'moch' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.moch.yaml
 sed 's/moch/bcch/g' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.moch.yaml > ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.bcch.yaml
+
+BCCH_VCF=$(awk -F'"' '/^input_vcf:/{print $2}' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.bcch.yaml)
+echo "$BCCH_VCF"                              # confirm it's the BCCH biSNP VCF
+ls "$BCCH_VCF".tbi || bcftools index -t "$BCCH_VCF"
+bcftools index -s "$BCCH_VCF" | cut -f1 > /nas/bcch_for_danny/reference_lists/bcch_contigs.phaseWY.txt
+cat /nas/bcch_for_danny/reference_lists/bcch_contigs.phaseWY.txt   # should be just the Z contig
+
+# run with dist_model: "Hamming" 
+snakemake -s${SCRIPTDIR}/Snakemake_PhaseWY/workflow/PhaseWY --profile ${SCRIPTDIR}/Snakemake_PhaseWY/local --configfile ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.bcch.yaml \
+  --conda-prefix ~/snakemake_envs/phasewy --rerun-incomplete
 
 # make dist_model Inverse_MAF yaml for moch and bcch
 grep 'Hamming' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.moch.yaml
