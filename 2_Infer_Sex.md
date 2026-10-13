@@ -21,7 +21,6 @@ done
 ```
 Infer sex from bam
 ```
-
 for sp in bcch cach moch boch; do
   mkdir -p ${PROJDIR}/analyses/sex_inference/${sp}
   nohup bash ${SCRIPTDIR}/2a_infer_sex.zdepth.bam.sh ${sp} \
