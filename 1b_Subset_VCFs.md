@@ -15,8 +15,8 @@ bcftools view ${VCF} -S ${SAMPLES_BCCH} | bgzip > ${PROJDIR}/data/vcfs/Z_noW.bcc
 
 bcftools view ${VCF} -S ${SAMPLES_MOCH} | bgzip > ${PROJDIR}/data/vcfs/Z_noW.moch.diploid.vcf.gz 
 
-bcftools view ${VCF} -S ${SAMPLES_BCCH} | bgzip > ${PROJDIR}/data/vcfs/Z_noW.cach.diploid.vcf.gz 
+bcftools view ${VCF} -S ${SAMPLES_CACH} | bgzip > ${PROJDIR}/data/vcfs/Z_noW.cach.diploid.vcf.gz 
 
-bcftools view ${VCF} -S ${SAMPLES_BCCH} | bgzip > ${PROJDIR}/data/vcfs/Z_noW.boch.diploid.vcf.gz 
+bcftools view ${VCF} -S ${SAMPLES_BOCH} | bgzip > ${PROJDIR}/data/vcfs/Z_noW.boch.diploid.vcf.gz 
 
 ```

@@ -47,8 +47,6 @@ WIN=${WIN:-500000}
 NJOBS=${NJOBS:-4}
 mkdir -p ${OUTDIR} ${CACHE}
 
-micromamba activate bcf 
-
 echo "[$(date)] Species: ${SP}"
 echo "  Samples from: ${SAMPLES}"
 echo "  BAM list:     ${BAMLIST}"

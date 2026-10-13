@@ -7,6 +7,7 @@ SCRIPTDIR=${PROJDIR}/scripts/Chickadee_NeoSex
 cd $SCRIPTDIR
 git pull
 cd ${PROJDIR}
+micromamba activate bcf
 ```
 Infer sex from VCF
 ```
