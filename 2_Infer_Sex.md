@@ -18,3 +18,12 @@ for sp in bcch cach moch boch; do
     > ${PROJDIR}/analyses/sex_inference/${sp}/infer_sex.log 2>&1 &
 done
 ```
+Infer sex from bam
+```
+
+for sp in bcch cach moch boch; do
+  mkdir -p ${PROJDIR}/analyses/sex_inference/${sp}
+  nohup bash ${SCRIPTDIR}/2a_infer_sex.zdepth.bam.sh ${sp} \
+    > ${PROJDIR}/analyses/sex_inference/${sp}/infer_sex.log 2>&1 &
+done
+```
