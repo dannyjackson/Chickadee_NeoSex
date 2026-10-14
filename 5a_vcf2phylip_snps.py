@@ -2,11 +2,18 @@
 # vcf2phylip_snps.py
 # Converts biallelic SNP genotypes to a relaxed phylip alignment for raxml-ng
 # heterozygotes are coded with IUPAC ambiguity codes, missing genotypes as N
-# drops sites that are invariant across samples (required for raxml-ng ascertainment bias correction)
+# drops sites that raxml-ng treats as invariant under ascertainment bias correction (ASC_LEWIS etc.):
+#   raxml-ng expands ambiguity codes (R = A/G, ...) and calls a site invariant if one base is compatible
+#   with every sample, e.g. A A R N is invariant. For a biallelic SNP that means a site is only kept if at
+#   least one sample is homozygous for each allele.
 #
 # usage: bcftools query -H -f '%REF\t%ALT[\t%GT]\n' in.vcf.gz | python3 vcf2phylip_snps.py out.phy
 
 import sys
+
+STATES = {"A": {"A"}, "C": {"C"}, "G": {"G"}, "T": {"T"},
+          "R": {"A", "G"}, "Y": {"C", "T"}, "S": {"C", "G"},
+          "W": {"A", "T"}, "K": {"G", "T"}, "M": {"A", "C"}}
 
 IUPAC = {frozenset("AG"): "R", frozenset("CT"): "Y", frozenset("CG"): "S",
          frozenset("AT"): "W", frozenset("GT"): "K", frozenset("AC"): "M"}
@@ -37,8 +44,12 @@ for line in sys.stdin:
             col.append(alleles[int(a[0])])
         else:
             col.append(het)
-    # keep only columns with more than one state among called genotypes
-    if len(set(c for c in col if c != "N")) < 2:
+    # raxml-ng invariant test: drop the column if any single base is compatible with every called genotype
+    shared = {"A", "C", "G", "T"}
+    for c in set(col):
+        if c != "N":
+            shared &= STATES[c]
+    if shared:
         n_invariant += 1
         continue
     for i, c in enumerate(col):
@@ -53,5 +64,5 @@ with open(out_file, "w") as out:
 
 sys.stderr.write(f"Sites read: {n_in}\n"
                  f"Sites skipped (not biallelic ACGT SNPs): {n_skipped}\n"
-                 f"Sites dropped (invariant across samples): {n_invariant}\n"
+                 f"Sites dropped (invariant for raxml-ng: no sample homozygous for one of the alleles): {n_invariant}\n"
                  f"Sites written: {n_kept}\n")
