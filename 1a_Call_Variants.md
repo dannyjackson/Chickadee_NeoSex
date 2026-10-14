@@ -136,7 +136,7 @@ cd ${PROJDIR}
 REF=${PROJDIR}/data_from_will/ncbi_dataset/data/GCA_030490865.1/GCA_030490865.1_bPoeAtr1.hap1_genomic.fna
 
 bcftools mpileup -f ${REF} -R ${PROJDIR}/reference_lists/bcch_ref.autosomes.txt -a AD,DP \
-    -b ${PROJDIR}/reference_lists/sorted_bams.raw_genome.txt -Ou \
+    -b ${PROJDIR}/reference_lists/sorted_bams.noW_genome.txt -Ou \
 | bcftools call -mv --ploidy 2 -Oz -o ${PROJDIR}/data/vcfs/autosomes.all_ind.diploid.vcf.gz 
 
 bcftools index ${PROJDIR}/data/vcfs/autosomes.all_ind.diploid.vcf.gz 

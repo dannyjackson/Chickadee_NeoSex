@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
-# 3a_Chr2_PCA_plot.r
+# 3a_Chr_PCA_plot.r
 # Plots plink PCA output colored by species
-# usage: Rscript 3a_Chr2_PCA_plot.r <plink_prefix> <sample_info.txt> <outdir> <label>
+# usage: Rscript 3a_Chr_PCA_plot.r <plink_prefix> <sample_info.txt> <outdir> <label>
 
 # Load required packages, installing if necessary
 required_packages <- c("ggplot2", "dplyr", "readr")

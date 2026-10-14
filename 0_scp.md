@@ -1,6 +1,9 @@
+# Sex inference
 scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/sex_inference/sex_calls.pdf .
+
 scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/sex_inference/Z_window_depth.pdf .
 
+scp -r daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/sex_inference/ .
 # Genespace
 scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/genespace/gs_run/riparian/bcch_chrZ_syntenic.pdf .
 
@@ -70,3 +73,12 @@ scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/pca/Chr2/admix_
 scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/pca/Chr2/admix_Chr2_bcch_moch_K3.pdf .
 
 scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/pca/Chr2/admix_Chr2_bcch_moch_K5.pdf .
+
+# PhaseWY
+scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny//scripts/Snakemake_PhaseWY/config/config.moch.yaml .
+
+scp -r daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/scripts/Snakemake_PhaseWY/results/moch_sex_depth_0.75_whatshap_ON/mac_1_window_10000_step_2500_model_Hamming/genome_summary .
+
+scp -r daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/scripts/Snakemake_PhaseWY/results/moch_sex_depth_0.75_whatshap_ON/mac_1_window_10000_step_2500_model_Hamming/pca .
+
+scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/scripts/Snakemake_PhaseWY/results/moch_sex_depth_0.75_whatshap_ON/mac_1_window_10000_step_2500_model_Hamming/snp_density_CM059970.1_100kb.png .

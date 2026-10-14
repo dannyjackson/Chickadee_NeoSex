@@ -63,7 +63,7 @@ TT95873 26.9165 HOMGAM  2   example/TT95873.bam
 # file for moch
 ################################################
 
-SEX=/nas/bcch_for_danny/analyses/sex_inference/sex_calls.tsv
+SEX=/nas/bcch_for_danny/analyses/sex_inference/moch/sex_calls.tsv
 BAMS=/nas/bcch_for_danny/reference_lists/sorted_bams.noW_genome.txt
 DEPTH=/nas/bcch_for_danny/data/vcfs/depth_check/zchr.idepth
 OUT=/nas/bcch_for_danny/reference_lists/moch_samples.phaseWY_table.txt
@@ -95,6 +95,7 @@ echo "Females: $(grep -c HETGAM "$OUT")   Males: $(grep -c HOMGAM "$OUT")"
 ################################################
 OUT=/nas/bcch_for_danny/reference_lists/bcch_samples.phaseWY_table.txt
 SPECIES=new_data
+SEX=/nas/bcch_for_danny/analyses/sex_inference/bcch/sex_calls.tsv
 
 # 1. Build the table
 {
@@ -121,7 +122,7 @@ echo "Females: $(grep -c HETGAM "$OUT")   Males: $(grep -c HOMGAM "$OUT")"
 # file for cach
 ################################################
 
-SEX=/nas/bcch_for_danny/analyses/sex_inference/sex_calls.tsv
+SEX=/nas/bcch_for_danny/analyses/sex_inference/cach/sex_calls.tsv
 BAMS=/nas/bcch_for_danny/reference_lists/sorted_bams.noW_genome.txt
 DEPTH=/nas/bcch_for_danny/data/vcfs/depth_check/zchr.idepth
 OUT=/nas/bcch_for_danny/reference_lists/cach_samples.phaseWY_table.txt
@@ -151,7 +152,7 @@ echo "Females: $(grep -c HETGAM "$OUT")   Males: $(grep -c HOMGAM "$OUT")"
 # file for boch
 ################################################
 
-SEX=/nas/bcch_for_danny/analyses/sex_inference/sex_calls.tsv
+SEX=/nas/bcch_for_danny/analyses/sex_inference/boch/sex_calls.tsv
 BAMS=/nas/bcch_for_danny/reference_lists/sorted_bams.noW_genome.txt
 DEPTH=/nas/bcch_for_danny/data/vcfs/depth_check/zchr.idepth
 OUT=/nas/bcch_for_danny/reference_lists/boch_samples.phaseWY_table.txt
@@ -180,10 +181,15 @@ echo "Females: $(grep -c HETGAM "$OUT")   Males: $(grep -c HOMGAM "$OUT")"
 ```
 Make list of contigs in vcf
 ```
+# should be the same for all species
 bcftools index -t /nas/bcch_for_danny/data/vcfs/Z_noW.moch.diploid.vcf.gz
 bcftools index -s /nas/bcch_for_danny/data/vcfs/Z_noW.moch.diploid.vcf.gz | cut -f1 \
   > /nas/bcch_for_danny/reference_lists/moch_contigs.phaseWY.txt
 cat /nas/bcch_for_danny/reference_lists/moch_contigs.phaseWY.txt   # should be the Z only
+
+cp /nas/bcch_for_danny/reference_lists/moch_contigs.phaseWY.txt /nas/bcch_for_danny/reference_lists/bcch_contigs.phaseWY.txt
+cp /nas/bcch_for_danny/reference_lists/moch_contigs.phaseWY.txt /nas/bcch_for_danny/reference_lists/cach_contigs.phaseWY.txt
+cp /nas/bcch_for_danny/reference_lists/moch_contigs.phaseWY.txt /nas/bcch_for_danny/reference_lists/boch_contigs.phaseWY.txt
 
 ```
 Filter vcf to sites that are only invariant in each species, and filter for mapping quality
@@ -211,42 +217,93 @@ bcftools view -a -Ou "$IN" \
 bcftools index -t "$OUT"
 
 bcftools view -H -i 'AC==0 || AC==AN' "$OUT" | head -3   # should print nothing
+
+####################################
+# cach
+####################################
+IN=/nas/bcch_for_danny/data/vcfs/Z_noW.cach.diploid.vcf.gz
+OUT=/nas/bcch_for_danny/data/vcfs/Z_noW.cach.diploid.biSNP.vcf.gz
+
+bcftools view -a -Ou "$IN" \
+ | bcftools view -m2 -M2 -v snps -i 'AC>0 && AC<AN && MQ>=30 && QUAL>=30' -Oz -o "$OUT"
+bcftools index -t "$OUT"
+
+bcftools view -H -i 'AC==0 || AC==AN' "$OUT" | head -3   # should print nothing
+
+
+####################################
+# boch
+####################################
+IN=/nas/bcch_for_danny/data/vcfs/Z_noW.boch.diploid.vcf.gz
+OUT=/nas/bcch_for_danny/data/vcfs/Z_noW.boch.diploid.biSNP.vcf.gz
+
+bcftools view -a -Ou "$IN" \
+ | bcftools view -m2 -M2 -v snps -i 'AC>0 && AC<AN && MQ>=30 && QUAL>=30' -Oz -o "$OUT"
+bcftools index -t "$OUT"
+
+bcftools view -H -i 'AC==0 || AC==AN' "$OUT" | head -3   # should print nothing
+
 ```
+Run snakemake
+```
+####################################
+# moch
+####################################
+
 # dry run
 snakemake -s ${SCRIPTDIR}/Snakemake_PhaseWY/workflow/PhaseWY --profile ${SCRIPTDIR}/Snakemake_PhaseWY/local --configfile ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.moch.yaml \
   --conda-prefix ~/snakemake_envs/phasewy -n   # dry run
 
-# run with dist_model: "Hamming" and again with "Inverse_MAF"
+# run with dist_model: "Hamming"
 snakemake -s${SCRIPTDIR}/Snakemake_PhaseWY/workflow/PhaseWY --profile ${SCRIPTDIR}/Snakemake_PhaseWY/local --configfile ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.moch.yaml \
   --conda-prefix ~/snakemake_envs/phasewy --rerun-incomplete
 
+
+# make dist_model Inverse_MAF yaml 
+grep 'Hamming' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.moch.yaml
+
+sed -i 's/Hamming/Inverse_MAF/g' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.moch.yaml
+
+# run with dist_model: "Inverse_MAF"
+snakemake -s${SCRIPTDIR}/Snakemake_PhaseWY/workflow/PhaseWY --profile ${SCRIPTDIR}/Snakemake_PhaseWY/local --configfile ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.moch.yaml \
+  --conda-prefix ~/snakemake_envs/phasewy --rerun-incomplete
+```
+####################################
+# bcch
+####################################
+```
 ## make yaml for bcch and associated file
 grep 'moch' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.moch.yaml
 sed 's/moch/bcch/g' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.moch.yaml > ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.bcch.yaml
 
-BCCH_VCF=$(awk -F'"' '/^input_vcf:/{print $2}' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.bcch.yaml)
-echo "$BCCH_VCF"                              # confirm it's the BCCH biSNP VCF
-ls "$BCCH_VCF".tbi || bcftools index -t "$BCCH_VCF"
-bcftools index -s "$BCCH_VCF" | cut -f1 > /nas/bcch_for_danny/reference_lists/bcch_contigs.phaseWY.txt
-cat /nas/bcch_for_danny/reference_lists/bcch_contigs.phaseWY.txt   # should be just the Z contig
-
 # run with dist_model: "Hamming" 
 snakemake -s${SCRIPTDIR}/Snakemake_PhaseWY/workflow/PhaseWY --profile ${SCRIPTDIR}/Snakemake_PhaseWY/local --configfile ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.bcch.yaml \
   --conda-prefix ~/snakemake_envs/phasewy --rerun-incomplete
+```
+####################################
+cach
+####################################
+```
+## make yaml for cach and associated file
+sed 's/moch/cach/g' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.moch.yaml > ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.cach.yaml
 
-# make dist_model Inverse_MAF yaml for moch and bcch
-grep 'Hamming' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.moch.yaml
-grep 'Hamming' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.bcch.yaml
+# run with dist_model: "Hamming" 
+snakemake -s${SCRIPTDIR}/Snakemake_PhaseWY/workflow/PhaseWY --profile ${SCRIPTDIR}/Snakemake_PhaseWY/local --configfile ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.cach.yaml \
+  --conda-prefix ~/snakemake_envs/phasewy --rerun-incomplete
+```
+####################################
+boch
+####################################
+```
+## make yaml for boch and associated file -- edit manually to adjust depth filters, since these are very low coverage
+# sed 's/moch/boch/g' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.moch.yaml > ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.boch.yaml
 
-sed -i 's/Hamming/Inverse_MAF/g' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.moch.yaml
-sed -i 's/Hamming/Inverse_MAF/g' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.bcch.yaml
-
-# set back
-
-sed -i 's/Inverse_MAF/Hamming/g' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.moch.yaml
-sed -i 's/Inverse_MAF/Hamming/g' ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.bcch.yaml
-
-
+# run with dist_model: "Hamming" 
+snakemake -s${SCRIPTDIR}/Snakemake_PhaseWY/workflow/PhaseWY --profile ${SCRIPTDIR}/Snakemake_PhaseWY/local --configfile ${SCRIPTDIR}/Snakemake_PhaseWY/config/config.boch.yaml \
+  --conda-prefix ~/snakemake_envs/phasewy --rerun-incomplete
+```
+Visualize output of snakemake 
+```
 # Visualize snps on sex limted chr
 cd ${SCRIPTDIR}/Chickadee_NeoSex
 git pull
