@@ -67,7 +67,7 @@ if (any(show)) {
 }
 legend("topleft", legend = c(present, "branch length", "bootstrap (>= 50)"),
        col = c(species_colors[present], "grey30", "firebrick"),
-       pch = c(rep(15, length(present)), NA, NA), lty = c(rep(NA, length(present)), NA, NA),
+       pch = c(rep(15, length(present)), NA, NA),
        text.col = c(rep("black", length(present)), "grey30", "firebrick"), bty = "n", cex = 0.8)
 axisPhylo(side = 1, cex.axis = 0.6)
 mtext("Substitutions per site (SNP alignment)", side = 1, line = 2.2, cex = 0.7)
