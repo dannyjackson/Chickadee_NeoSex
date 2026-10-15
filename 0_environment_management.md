@@ -74,6 +74,14 @@ micromamba create -n repeats -c conda-forge -c bioconda repeatmodeler repeatmask
 micromamba activate repeats
 RepeatModeler -version
 ```
+RAxML
+```
+
+micromamba create -n raxml -c conda-forge -c bioconda bcftools raxml-ng python r-base r-ape r-phangorn
+micromamba activate raxml
+
+```
+
 # Managing project environment
 Consistent variables across scripts
 ```
