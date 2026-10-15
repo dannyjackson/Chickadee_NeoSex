@@ -23,10 +23,10 @@ tree <- read.tree(tree_file)
 # root
 if (nchar(outgroup) > 0) {
   og <- intersect(strsplit(outgroup, ",")[[1]], tree$tip.label)
-  tree <- root(tree, outgroup = og, resolve.root = TRUE)
+  tree <- root(tree, outgroup = og, resolve.root = TRUE, edgelabel = TRUE)   # edgelabel keeps support on the right branches
   root_note <- paste0("rooted on ", paste(og, collapse = ", "))
 } else {
-  tree <- phangorn::midpoint(tree)
+  tree <- phangorn::midpoint(tree, node.labels = "support")   # keeps support on the right branches
   root_note <- "midpoint rooted"
 }
 tree <- ladderize(tree)
@@ -47,7 +47,7 @@ plot(tree, tip.color = tip_cols, cex = 0.5, label.offset = 0.001, no.margin = FA
 bs <- suppressWarnings(as.numeric(tree$node.label))
 show <- !is.na(bs) & bs >= 50
 if (any(show)) {
-  nodelabels(text = bs[show], node = (ntip + 1):(ntip + tree$Nnode)[show],
+  nodelabels(text = bs[show], node = ((ntip + 1):(ntip + tree$Nnode))[show],
              frame = "none", adj = c(1.2, -0.4), cex = 0.4)
 }
 present <- unique(species)
