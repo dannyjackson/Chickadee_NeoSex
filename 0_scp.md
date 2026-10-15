@@ -39,7 +39,7 @@ scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/pca/NeoZ/pca_Ne
 
 ## NeoZ PAR
 scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/raxml/NeoZ/CM059970.1_25.44-62.17Mb/tree_NeoZ.CM059970.1_25.44-62.17Mb.pdf .
-
+scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/analyses/raxml/NeoZ/CM059970.1_25.44-62.17Mb/tree_NeoZ.CM059970.1_25.44-62.17Mb.brlen.pdf .
 # env files
 scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/reference_lists/genespace.lock.txt .
 scp daja5529@chickadee.colorado.edu:/nas/bcch_for_danny/reference_lists/of255.lock.txt .
