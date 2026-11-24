@@ -14,6 +14,8 @@ micromamba install -n bcf -c conda-forge -c bioconda plink
 micromamba install -c conda-forge r-plotly r-htmlwidgets r-scatterplot3d pandoc
 micromamba install -c conda-forge -c bioconda admixture r-tidyr
 micromamba install -c conda-forge r-patchwork
+micromamba install -c conda-forge ncbi-datasets-cli
+
 
 ```
 Create environment for genespace
