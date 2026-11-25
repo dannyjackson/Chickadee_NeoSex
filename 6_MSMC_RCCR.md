@@ -45,6 +45,17 @@ MOCH_HAP2=/nas/Mountain.chickadee.pac.bio.reference/ready_reference/ncbi_hap2_su
 ```
 (The haplotype paths are also hard-coded in `6a_dipcall_haps.sh`.)
 
+## Download BCCH hap2
+```
+FILES_TO_DOWNLOAD="gff3,rna,cds,protein,genome,seq-report"
+
+cd ${PROJDIR}/data_from_will
+datasets download genome accession GCA_030490855.1 \
+  --include "${FILES_TO_DOWNLOAD}" \
+  --filename GCA_030490855.1.zip
+
+unzip GCA_030490855.1.zip
+```
 ## 1. Call phased variants from each pair of haplotypes (dipcall)
 ```
 micromamba activate msmc
