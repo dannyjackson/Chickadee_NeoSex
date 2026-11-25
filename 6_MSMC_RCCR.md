@@ -76,6 +76,10 @@ done
 
 ## 2. Build joint MSMC2 input (all three species, per autosome)
 ```
+PROJDIR=/nas/bcch_for_danny
+REF=${PROJDIR}/data_from_will/ncbi_dataset/data/GCA_030490865.1/GCA_030490865.1_bPoeAtr1.hap1_genomic.fna
+python3 softmask2bed.py ${REF} > ${PROJDIR}/analyses/msmc_rccr/bPoeAtr1.hap1.softmask.bed
+
 nohup bash ${SCRIPTDIR}/6b_msmc_input.sh > ${PROJDIR}/analyses/msmc_rccr/msmc_input.log 2>&1 &
 ```
 Optional extra masks (same SNPable approach as the finches, run on `${REF}` with `A2.3_generate_mask.sh`):
