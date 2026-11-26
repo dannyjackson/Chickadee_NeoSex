@@ -4,7 +4,7 @@ Define environment variables
 ```
 PROJDIR=/nas/bcch_for_danny/
 SCRIPTDIR=${PROJDIR}/scripts/Chickadee_NeoSex
-
+WORK
 GCA_030490855.1
 
 FILES_TO_DOWNLOAD="gff3,rna,cds,protein,genome,seq-report"

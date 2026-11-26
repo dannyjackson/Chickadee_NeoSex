@@ -35,7 +35,6 @@ tar -jxf dipcall-0.3_x64-linux.tar.bz2      # creates ~/programs/dipcall.kit (bu
 PROJDIR=/nas/bcch_for_danny
 SCRIPTDIR=${PROJDIR}/scripts/Chickadee_NeoSex
 REF=${PROJDIR}/data_from_will/ncbi_dataset/data/GCA_030490865.1/GCA_030490865.1_bPoeAtr1.hap1_genomic.fna
-
 BCCH_HAP1=${PROJDIR}/data_from_will/ncbi_dataset/data/GCA_030490865.1/GCA_030490865.1_bPoeAtr1.hap1_genomic.fna
 BCCH_HAP2=${PROJDIR}/data_from_will/ncbi_dataset/data/GCA_030490855.1/GCA_030490855.1_bPoeAtr1.hap2_genomic.fna
 CACH_HAP1=/nas/bcch_for_danny/cach_reads/bPoeCar1.hap1.p_ctg.fa.gz
@@ -74,25 +73,21 @@ done
 - **Callable fraction** should be similar across species. If MOCH is much lower than BCCH/CACH, the divergent alignments are failing under `asm5`: delete `dipcall/moch/` and rerun with `ASM_PRESET=asm20 bash ${SCRIPTDIR}/6a_dipcall_haps.sh moch`.
 - **Heterozygosity** should be roughly comparable to read-based estimates for these species. Values near 0 mean hap1 = hap2 (wrong file), and very high values usually mean collapsed or duplicated sequence.
 
-## 2. Build joint MSMC2 input (all three species, per autosome)
+## 2. Build joint MSMC2 input (all three species, per autosome) using ref genome's soft mask
 ```
 PROJDIR=/nas/bcch_for_danny
 REF=${PROJDIR}/data_from_will/ncbi_dataset/data/GCA_030490865.1/GCA_030490865.1_bPoeAtr1.hap1_genomic.fna
-python3 softmask2bed.py ${REF} > ${PROJDIR}/analyses/msmc_rccr/bPoeAtr1.hap1.softmask.bed
+python3 ${SCRIPTDIR}/softmask2bed.py ${REF} > ${PROJDIR}/analyses/msmc_rccr/bPoeAtr1.hap1.softmask.bed
 
-nohup bash ${SCRIPTDIR}/6b_msmc_input.sh > ${PROJDIR}/analyses/msmc_rccr/msmc_input.log 2>&1 &
-```
-Optional extra masks (same SNPable approach as the finches, run on `${REF}` with `A2.3_generate_mask.sh`):
-```
-MAPMASK_PATTERN="${PROJDIR}/analyses/snpable/bPoeAtr1_revised_{CHR}_mask.150.50.bed.gz" \
-NEGMASK=<repeatmasker bed from 1c_RepeatModeler.md> \
+NEGMASK=${PROJDIR}/analyses/msmc_rccr/bPoeAtr1.hap1.softmask.bed \
   nohup bash ${SCRIPTDIR}/6b_msmc_input.sh > ${PROJDIR}/analyses/msmc_rccr/msmc_input.log 2>&1 &
+  
 ```
 
 ## 3. Run MSMC2 within and across species, combine, MSMC-IM
 Defaults match the Sulidae runs (`-p 1*2+15*1+1*2 -i 100`). Add `RUN_IM=1 MU=<rate>` to also fit MSMC-IM; `MU` must equal `mu` in `6e`.
 ```
-THREADS=24 nohup bash ${SCRIPTDIR}/6c_run_msmc_rccr.sh \
+MSMC2=msmc2_Linux THREADS=24 nohup bash ${SCRIPTDIR}/6c_run_msmc_rccr.sh \
   > ${PROJDIR}/analyses/msmc_rccr/run_msmc.log 2>&1 &
 ```
 Outputs in `analyses/msmc_rccr/output/`:
