@@ -48,6 +48,7 @@ def parse_gen(s):
 
 def read_est(fn):
     d = pd.read_csv(fn, sep=r"\s+")
+    d = d.rename(columns={"left_boundaries": "left_time_boundary", "left_boundary": "left_time_boundary"})
     want = ["left_time_boundary", "im_N1", "im_N2", "m", "M"]
     if not set(want) <= set(d.columns):
         d = pd.read_csv(fn, sep=r"\s+", header=None, comment="#")
@@ -111,6 +112,13 @@ def main():
             r[f"M{lv:g}_years_lo"] = tg * g_lo
             r[f"M{lv:g}_years_hi"] = tg * g_hi
         pos = d[d.left_time_boundary > 0]
+        # sanity check: a pair that is fully merged in the most recent intervals contradicts RCCR ~0 there,
+        # which usually means the optimiser stalled (e.g. near its starting values)
+        r["M_recent"] = float(pos.M.iloc[:3].mean())
+        r["fit_flag"] = "CHECK FIT: M~1 at present" if r["M_recent"] > 0.5 else ""
+        if r["fit_flag"]:
+            print(f"warning: {pair} beta {b1:g},{b2:g}: M(t) = {r['M_recent']:.2f} in the most recent intervals; "
+                  "the fit has probably failed. Check the fittingdetails PDF.", file=sys.stderr)
         k = pos.m.idxmax()
         r["peak_m"] = pos.m.max()
         r["peak_m_years"] = pos.loc[k, "years"]
@@ -122,7 +130,7 @@ def main():
     S = pd.DataFrame(rows).sort_values(["pair", "beta1", "beta2"])
     S.to_csv(f"{a.out}.summary.tsv", sep="\t", index=False, float_format="%.6g")
     show = ["pair", "beta1", "beta2"] + [f"M{lv:g}_years" for lv in LEVELS] + ["peak_m_years"] + \
-           [f"M_at_{c/1000:g}ka" for c in checks]
+           [f"M_at_{c/1000:g}ka" for c in checks] + ["fit_flag"]
     pd.set_option("display.width", 250)
     print(S[show].to_string(index=False, float_format=lambda x: f"{x:.3g}"))
     plot(runs, b1d, b2d, a, f"{a.out}.png")
@@ -139,7 +147,7 @@ def plot(runs, b1d, b2d, a, path):
     fig, (ax, bx) = plt.subplots(2, 1, figsize=(11, 7.5), sharex=True)
     for pair, b1, b2, d in runs:
         d = d[d.left_time_boundary > 0]
-        main = np.isclose(b1, b1d) and np.isclose(b2, b2d)
+        main = np.isclose(b1, b1d, rtol=1e-6, atol=0) and np.isclose(b2, b2d, rtol=1e-6, atol=0)
         col = PAIRCOL.get(pair, "#888888")
         lab = " vs ".join(NAMES.get(s, s) for s in pair.split("_")) if main else None
         kw = dict(color=col, lw=2 if main else 1, ls="-" if main else (0, (4, 2)), alpha=1 if main else 0.7,
