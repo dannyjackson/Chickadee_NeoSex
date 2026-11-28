@@ -15,6 +15,7 @@ micromamba install -n bcf -c conda-forge -c bioconda pixy pandas matplotlib
 
 PROJDIR=/nas/bcch_for_danny
 SCRIPTDIR=${PROJDIR}/scripts/Chickadee_NeoSex
+cd $SCRIPTDIR && git pull
 mkdir -p ${PROJDIR}/analyses/dxy
 ```
 
